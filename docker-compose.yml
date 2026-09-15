@@ -1,0 +1,91 @@
+# ==============================================================================
+# ZYBERIX AUTH ENGINE — PRODUCTION DOCKER COMPOSE
+# Maintainer: Zyberix Consultancy Services
+# License:    Apache-2.0
+# Signature:  X-Powered-By: Zyberix-Auth-Engine-v1.0
+# ==============================================================================
+#
+# Brings up the Microservice Engine alongside its Redis (ephemeral token
+# store) and PostgreSQL (audit trail + durable configuration) dependencies.
+#
+# Usage:
+#   cp .env.example .env   # then fill in secrets
+#   docker compose up -d --build
+#
+version: "3.9"
+
+services:
+  zyberix-engine:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.node
+    image: zyberix/auth-engine:1.0.0
+    container_name: zyberix-auth-engine
+    restart: unless-stopped
+    ports:
+      - "${ZYBERIX_PORT:-8443}:8443"
+    environment:
+      NODE_ENV: production
+      ZYBERIX_HTTP_PORT: "8443"
+      ZYBERIX_REDIS_URL: redis://zyberix-redis:6379
+      ZYBERIX_DATABASE_URL: postgresql://zyberix:${POSTGRES_PASSWORD}@zyberix-postgres:5432/zyberix_auth
+      ZYBERIX_MASTER_KEY: ${ZYBERIX_MASTER_KEY}
+      ZYBERIX_SMTP_HOST: ${ZYBERIX_SMTP_HOST}
+      ZYBERIX_SMTP_PORT: ${ZYBERIX_SMTP_PORT:-587}
+      ZYBERIX_SMTP_USER: ${ZYBERIX_SMTP_USER}
+      ZYBERIX_SMTP_PASS: ${ZYBERIX_SMTP_PASS}
+      ZYBERIX_WHATSAPP_TOKEN: ${ZYBERIX_WHATSAPP_TOKEN}
+      ZYBERIX_TELEGRAM_BOT_TOKEN: ${ZYBERIX_TELEGRAM_BOT_TOKEN}
+    depends_on:
+      zyberix-redis:
+        condition: service_healthy
+      zyberix-postgres:
+        condition: service_healthy
+    networks:
+      - zyberix-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "https://localhost:8443/healthz", "-k"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  zyberix-redis:
+    image: redis:7.2-alpine
+    container_name: zyberix-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - zyberix-redis-data:/data
+    networks:
+      - zyberix-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zyberix-postgres:
+    image: postgres:16-alpine
+    container_name: zyberix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zyberix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: zyberix_auth
+    volumes:
+      - zyberix-postgres-data:/var/lib/postgresql/data
+    networks:
+      - zyberix-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zyberix -d zyberix_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  zyberix-net:
+    driver: bridge
+
+volumes:
+  zyberix-redis-data:
+  zyberix-postgres-data:

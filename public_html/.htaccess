@@ -1,0 +1,25 @@
+# Zyberix Auth Engine — Apache hardening for shared hosting (public_html/)
+# Maintainer: Zyberix Consultancy Services
+
+# Route every request through the front controller.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Force HTTPS (required — Zyberix Auth Engine handles high-risk verification codes).
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Security headers.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>
+
+# Never allow direct access to dotfiles (.env, .git, etc.) if any end up here.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

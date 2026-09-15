@@ -1,0 +1,29 @@
+# Zyberix Auth Engine — .gitignore
+
+# Secrets — NEVER commit real environment values
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor junk
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test/coverage artifacts
+coverage/
+.nyc_output/
